@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced D3.js Dashboard</title>
+    <!-- Link to CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Link to D3.js -->
+    <script src="{{ url_for('static', filename='lib/d3.v7.min.js') }}"></script>
+</head>
+<body class="light-theme">
+    <header>
+        <h2>📊 Advanced D3.js Dashboard</h2>
+        <button class="theme-toggle" onclick="cycleTheme()">Toggle Theme</button>
+    </header>
+
+    <main class="dashboard">
+        <div class="card" id="line-chart">
+            <div class="chart-title">Revenue Trend</div>
+        </div>
+        <div class="card" id="bar-chart">
+            <div class="chart-title">Sales by Category</div>
+        </div>
+        <div class="card" id="pie-chart">
+            <div class="chart-title">Market Share</div>
+        </div>
+        <div class="card" id="radial-chart">
+            <div class="chart-title">Completion Rate</div>
+        </div>
+        <div class="card" id="funnel-chart">
+            <div class="chart-title">Sales Funnel</div>
+        </div>
+        <div class="card" id="area-chart">
+            <div class="chart-title">User Growth</div>
+        </div>
+        <div class="card" id="scatter-chart">
+            <div class="chart-title">Performance Metrics</div>
+        </div>
+        <div class="card" id="gauge-chart">
+            <div class="chart-title">KPI Score</div>
+        </div>
+    </main>
+
+    <div class="details-container" id="details">
+        <span class="close-details" onclick="closeDetails()">×</span>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('overview')">Overview</div>
+            <div class="tab" onclick="switchTab('alt-chart')">Alternate Chart</div>
+            <div class="tab" onclick="switchTab('data-table')">Data Table</div>
+        </div>
+        <div id="overview" class="tab-content active">
+            <h3>Overview</h3>
+            <p id="overview-text">Detailed information will show here...</p>
+        </div>
+        <div id="alt-chart" class="tab-content">
+            <h3>Alternate Visualization</h3>
+            <div id="alt-chart-content" style="height: 300px;"></div>
+        </div>
+        <div id="data-table" class="tab-content">
+            <h3>Data Table</h3>
+            <table id="data-table-content">
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Link to JavaScript -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
