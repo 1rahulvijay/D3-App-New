@@ -1,0 +1,551 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, var(--bg), color-mix(in srgb, var(--bg) 95%, var(--fg)));
+    color: var(--fg);
+    font-size: var(--font-size-base);
+    line-height: 1.5;
+    transition: all 0.3s ease;
+    overflow-x: hidden;
+    max-width: 100vw;
+    box-sizing: border-box;
+}
+
+/* Theme Variables */
+:root {
+    --bg: #f4f6f8;
+    --fg: #1e1e2f;
+    --accent: #3b82f6;
+    --card: #ffffff;
+    --card-border: rgba(59, 130, 246, 0.25);
+    --hover: #dbeafe;
+    --grid: rgba(30, 30, 47, 0.15);
+    --font-size-base: 12px;
+    --font-size-title: 14px;
+    --font-size-axis: 10px;
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    --chart-bg: linear-gradient(180deg, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.1));
+    --chart-gradient-start: #3b82f6;
+    --chart-gradient-end: #93c5fd;
+    --secondary-color: #93c5fd; /* Added for Sankey link gradient */
+}
+
+body.light-theme {
+    --bg: #f7fafc;
+    --fg: #1f2937;
+    --accent: #3b82f6;
+    --card: #ffffff;
+    --card-border: rgba(59, 130, 246, 0.25);
+    --hover: #dbeafe;
+    --grid: rgba(30, 30, 47, 0.15);
+    --chart-bg: linear-gradient(180deg, rgba(59, 130, 246, 0.15), rgba(255, 255, 255, 0.1));
+    --chart-gradient-start: #3b82f6;
+    --chart-gradient-end: #93c5fd;
+    --secondary-color: #93c5fd; /* Added for Sankey link gradient */
+}
+
+body.dark-theme {
+    --bg: #1e1e2f;
+    --fg: #e2e8f0;
+    --accent: #60a5fa;
+    --card: #2a2a3d;
+    --card-border: rgba(96, 165, 250, 0.35);
+    --hover: #475569;
+    --grid: rgba(244, 246, 248, 0.15);
+    --chart-bg: linear-gradient(180deg, rgba(96, 165, 250, 0.25), rgba(30, 30, 47, 0.15));
+    --chart-gradient-start: #60a5fa;
+    --chart-gradient-end: #a3bffa;
+    --secondary-color: #a3bffa; /* Added for Sankey link gradient */
+}
+
+body.corporate-theme {
+    --bg: #1a202c;
+    --fg: #e2e8f0;
+    --accent: #2563eb;
+    --card: #2d3748;
+    --card-border: rgba(37, 99, 235, 0.35);
+    --hover: #4b5563;
+    --grid: rgba(226, 232, 240, 0.15);
+    --chart-bg: linear-gradient(180deg, rgba(37, 99, 235, 0.25), rgba(30, 30, 47, 0.15));
+    --chart-gradient-start: #2563eb;
+    --chart-gradient-end: #7dd3fc;
+    --secondary-color: #7dd3fc; /* Added for Sankey link gradient */
+}
+
+body.neutral-theme {
+    --bg: #e5e7eb;
+    --fg: #374151;
+    --accent: #6b7280;
+    --card: #f3f4f6;
+    --card-border: rgba(107, 114, 128, 0.25);
+    --hover: #d1d5db;
+    --grid: rgba(55, 65, 81, 0.15);
+    --chart-bg: linear-gradient(180deg, rgba(107, 114, 128, 0.15), rgba(255, 255, 255, 0.1));
+    --chart-gradient-start: #6b7280;
+    --chart-gradient-end: #9ca3af;
+    --secondary-color: #9ca3af; /* Added for Sankey link gradient */
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card);
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    margin: 0.3rem;
+    max-width: calc(100% - 0.6rem);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.theme-toggle, .refresh-data {
+    background: var(--accent);
+    color: #fff;
+    padding: 0.3rem 0.8rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+}
+
+.theme-toggle:hover, .refresh-data:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: color-mix(in srgb, var(--accent) 85%, white);
+}
+
+/* Navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, #4a6fa5, #81a1c1);
+    padding: 0.4rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    margin: 0.3rem;
+    max-width: calc(100% - 0.6rem);
+    height: 40px;
+}
+
+.navbar a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.navbar a:hover, .navbar a.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    transform: scale(1.05);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.navbar a i {
+    font-size: 1rem;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.3rem;
+    margin: 0 0.3rem 0.3rem;
+    max-width: calc(100% - 0.6rem);
+}
+
+.metric-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 0.5rem;
+    text-align: center;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.metric-card h3 {
+    font-size: var(--font-size-title);
+    color: var(--accent);
+    margin-bottom: 0.2rem;
+    font-weight: 600;
+}
+
+.metric-card p {
+    font-size: 0.9rem;
+    color: var(--fg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.metric-card p .trend-up {
+    color: #22c55e;
+    font-size: 1.2rem;
+}
+
+.metric-card p .trend-down {
+    color: #ef4444;
+    font-size: 1.2rem;
+}
+
+/* Chart Grid */
+.chart-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Override for Sankey page to ensure single column */
+    gap: 0.3rem;
+    padding: 0 0.3rem;
+    max-width: calc(100% - 0.6rem);
+}
+
+#sankey-chart {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: stretch;
+}
+
+/* Card Styles */
+.card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 0.4rem;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    background-image: var(--chart-bg);
+}
+
+.card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+.card-header {
+    font-size: var(--font-size-title);
+    font-weight: 600;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.card svg {
+    width: 100%;
+    height: 240px;
+    overflow: visible;
+}
+
+/* Details Container */
+.details-container {
+    position: fixed;
+    bottom: -100%;
+    left: 0;
+    width: 100%;
+    max-height: 60vh;
+    background: var(--card);
+    color: var(--fg);
+    padding: 0.6rem;
+    border-top: 2px solid var(--accent);
+    transition: bottom 0.3s ease-in-out;
+    z-index: 1000;
+    overflow-y: auto;
+    box-sizing: border-box;
+    border-radius: 6px 6px 0 0;
+}
+
+.details-container.open {
+    bottom: 0;
+}
+
+.close-details {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.close-details:hover {
+    background: color-mix(in srgb, var(--accent) 80%, white);
+}
+
+.tabs {
+    display: flex;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.tab {
+    padding: 0.3rem 0.8rem;
+    cursor: pointer;
+    background: var(--hover);
+    border-radius: 4px;
+    font-size: var(--font-size-base);
+    transition: background 0.2s, color 0.2s;
+}
+
+.tab.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.table-wrapper {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: 0.4rem;
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-base);
+}
+
+th, td {
+    padding: 0.3rem;
+    text-align: left;
+    border-bottom: 1px solid var(--card-border);
+    color: var(--fg);
+}
+
+th {
+    background: var(--accent);
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+button {
+    background: var(--accent);
+    color: #fff;
+    padding: 0.3rem 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: color-mix(in srgb, var(--accent) 85%, white);
+}
+
+.tooltip {
+    position: absolute;
+    background: var(--card);
+    color: var(--fg);
+    padding: 0.4rem;
+    border-radius: 4px;
+    font-size: var(--font-size-base);
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 9999;
+    border: 1px solid var(--card-border);
+    max-width: 180px;
+    line-height: 1.4;
+}
+
+.card svg text {
+    font-size: var(--font-size-axis);
+    fill: var(--fg);
+    font-weight: 600;
+    text-anchor: middle;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+
+.card svg .x-axis text {
+    text-anchor: middle;
+    font-size: var(--font-size-axis);
+    fill: var(--fg);
+}
+
+.card svg .y-axis text {
+    text-anchor: end;
+    font-size: var(--font-size-axis);
+    fill: var(--fg);
+}
+
+.card svg .grid line {
+    stroke: var(--grid);
+    stroke-width: 0.6;
+    opacity: 0.8;
+}
+
+.card svg .grid path {
+    stroke: none;
+}
+
+.card svg .axis path,
+.card svg .axis line {
+    stroke: var(--fg);
+    stroke-opacity: 0.6;
+    shape-rendering: crispEdges;
+}
+
+/* Media Queries for Responsive Design */
+@media (max-width: 1366px) { /* 13" (2560x1600 scaled) */
+    :root {
+        --font-size-base: 10px;
+        --font-size-title: 12px;
+        --font-size-axis: 8px;
+    }
+    .card svg {
+        height: 200px;
+    }
+    .metrics-grid, .chart-grid {
+        gap: 0.2rem;
+    }
+    .navbar {
+        padding: 0.3rem 0.8rem;
+        height: 50px;
+    }
+    .navbar a {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+}
+
+@media (min-width: 1367px) and (max-width: 1920px) { /* 15.6" (1920x1080), 16" (2560x1600 scaled) */
+    :root {
+        --font-size-base: 12px;
+        --font-size-title: 14px;
+        --font-size-axis: 10px;
+    }
+    .card svg {
+        height: 240px;
+    }
+    .navbar {
+        padding: 0.6rem 1.5rem;
+        height: 70px;
+    }
+    .navbar a {
+        font-size: 1.1rem;
+        padding: 0.6rem 1.2rem;
+    }
+}
+
+@media (min-width: 1921px) and (max-width: 2560px) { /* 24" (1920x1200) */
+    :root {
+        --font-size-base: 14px;
+        --font-size-title: 16px;
+        --font-size-axis: 12px;
+    }
+    .card svg {
+        height: 288px;
+    }
+    .navbar {
+        padding: 0.7rem 1.8rem;
+        height: 80px;
+    }
+    .navbar a {
+        font-size: 1.2rem;
+        padding: 0.7rem 1.5rem;
+    }
+}
+
+@media (min-width: 2561px) and (max-width: 3440px) { /* 32" (3840x2160) */
+    :root {
+        --font-size-base: 16px;
+        --font-size-title: 18px;
+        --font-size-axis: 14px;
+    }
+    .card svg {
+        height: 312px;
+    }
+    .navbar {
+        padding: 0.8rem 2rem;
+        height: 90px;
+    }
+    .navbar a {
+        font-size: 1.3rem;
+        padding: 0.8rem 1.8rem;
+    }
+}
+
+@media (min-width: 3441px) { /* 34" (3440x1440) */
+    :root {
+        --font-size-base: 18px;
+        --font-size-title: 20px;
+        --font-size-axis: 16px;
+    }
+    .card svg {
+        height: 336px;
+    }
+    .navbar {
+        padding: 0.9rem 2.5rem;
+        height: 100px;
+    }
+    .navbar a {
+        font-size: 1.4rem;
+        padding: 0.9rem 2rem;
+    }
+}
