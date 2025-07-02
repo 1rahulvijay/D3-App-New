@@ -1,59 +1,53 @@
 import pandas as pd
-import random
-from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
 
 def generate_sankey_data_from_excel(file_path):
     try:
-        # Read Excel data
+        # Load Excel
         df = pd.read_excel(file_path)
-        
-        # Clean data
-        df = df.dropna(subset=["Vertical", "Type"])
-        df["Vertical"] = df["Vertical"].str.strip()
-        df["Type"] = df["Type"].str.strip()
 
-        # Unique nodes
+        # Clean and validate
+        df = df.dropna(subset=["Vertical", "request_type", "count"])
+        df["Vertical"] = df["Vertical"].astype(str).str.strip()
+        df["request_type"] = df["request_type"].astype(str).str.strip()
+        df["count"] = df["count"].astype(int)
+
+        # Unique node names
         verticals = df["Vertical"].unique().tolist()
-        types = df["Type"].unique().tolist()
+        request_types = df["request_type"].unique().tolist()
 
-        # Node list: ICMB ORG + Verticals + Types
-        nodes = [{"name": "ICMB ORG"}] + [{"name": v} for v in verticals] + [{"name": t} for t in types]
-
-        # Create index lookup
+        # Build node list
+        nodes = [{"name": "ICMB ORG"}] + [{"name": v} for v in verticals] + [{"name": rt} for rt in request_types]
         node_indices = {node["name"]: idx for idx, node in enumerate(nodes)}
 
-        # Links: ICMB ORG -> Vertical
-        org_to_vertical = df.groupby("Vertical").size().to_dict()
-        links = [
-            {
+        links = []
+
+        # ICMB ORG → Vertical (sum counts per vertical)
+        org_to_vertical = df.groupby("Vertical")["count"].sum().to_dict()
+        for vertical, total_count in org_to_vertical.items():
+            links.append({
                 "source": node_indices["ICMB ORG"],
                 "target": node_indices[vertical],
-                "value": count
-            }
-            for vertical, count in org_to_vertical.items()
-        ]
+                "value": total_count
+            })
 
-        # Links: Vertical -> Request Type
-        vertical_to_type = df.groupby(["Vertical", "Type"]).size().to_dict()
-        for (vertical, req_type), count in vertical_to_type.items():
+        # Vertical → Request Type
+        for _, row in df.iterrows():
             links.append({
-                "source": node_indices[vertical],
-                "target": node_indices[req_type],
-                "value": count
+                "source": node_indices[row["Vertical"]],
+                "target": node_indices[row["request_type"]],
+                "value": row["count"]
             })
 
         # Metrics
-        total_flow = sum(link["value"] for link in links)
-        avg_flow_per_vertical = round(total_flow / len(verticals), 2) if verticals else 0
-        total_requests = len(df)
+        total_request_count = df["count"].sum()
+        avg_flow_per_vertical = round(total_request_count / len(verticals), 2) if verticals else 0
 
         metrics = [
-            {"label": "Total Flow", "value": total_flow},
-            {"label": "Avg Flow per Vertical", "value": avg_flow_per_vertical},
-            {"label": "Total Requests", "value": total_requests}
+            {"label": "Total Request Count", "value": total_request_count},
+            {"label": "Avg Flow per Vertical", "value": avg_flow_per_vertical}
         ]
 
         return {"nodes": nodes, "links": links, "metrics": metrics}
