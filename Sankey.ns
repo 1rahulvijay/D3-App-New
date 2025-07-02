@@ -260,8 +260,3 @@ const drawSankeyChart = (containerId, data, title, color) => {
         );
     });
 };
-
-i need fix for sankey chart
-node position in center of tile, make better colors and add colors to nodes also
-
-make it better
