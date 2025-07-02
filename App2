@@ -59,44 +59,57 @@ def generate_time_series():
 
 def generate_sankey_data():
     try:
+        # Define nodes with ICMB ORG as the source
         verticals = ["Retail", "Technology", "Education", "Finance", "Manufacturing", "Healthcare"]
         request_types = [
             "Inquiry", "Support", "Complaint", "Feedback", "Onboarding",
             "Billing", "Technical", "Consultation", "Escalation", "Training",
             "Refund", "Other"
         ]
-        nodes = [{"name": name} for name in verticals] + [{"name": name} for name in request_types]
+        nodes = [{"name": "ICMB ORG"}] + [{"name": name} for name in verticals] + [{"name": name} for name in request_types]
+        
+        # Generate links following ICMB ORG -> Verticals -> Request Types
         links = []
-        other_value = 0
-        threshold = 10
-        for i, vertical in enumerate(verticals):
-            selected_requests = random.sample(request_types, k=random.randint(8, 10))
-            for request_type in selected_requests:
-                value = random.randint(5, 50)
-                if value < threshold and request_type != "Other":
-                    other_value += value
-                else:
-                    links.append({
-                        "source": i,
-                        "target": len(verticals) + request_types.index(request_type),
-                        "value": value if value >= threshold else 0
-                    })
-        if other_value > 0:
+        for i, vertical in enumerate(verticals, start=1):  # Start index at 1 for verticals (0 is ICMB ORG)
+            # Connect ICMB ORG to each vertical
             links.append({
-                "source": random.randint(0, len(verticals) - 1),
-                "target": len(verticals) + request_types.index("Other"),
-                "value": other_value
+                "source": 0,  # ICMB ORG index
+                "target": i,  # Vertical index
+                "value": random.randint(50, 150)  # Significant flow from ICMB ORG to Verticals
             })
+            # Connect each vertical to a random subset of request types
+            selected_requests = random.sample(request_types, k=random.randint(6, 10))
+            for request_type in selected_requests:
+                value = random.randint(10, 50)
+                links.append({
+                    "source": i,  # Vertical index
+                    "target": len(verticals) + 1 + request_types.index(request_type),  # Request type index (after verticals)
+                    "value": value
+                })
+
+        # Ensure minimum number of links and filter out low values
         while len(links) < 30:
-            source = random.randint(0, len(verticals) - 1)
-            target = random.randint(len(verticals), len(nodes) - 1)
-            value = random.randint(10, 50)
-            if not any(link["source"] == source and link["target"] == target for link in links):
-                links.append({"source": source, "target": target, "value": value})
-        return {"nodes": nodes, "links": links}
+            vertical_idx = random.randint(1, len(verticals))  # Random vertical
+            request_idx = len(verticals) + 1 + random.randint(0, len(request_types) - 1)  # Random request type
+            if not any(link["source"] == vertical_idx and link["target"] == request_idx for link in links):
+                value = random.randint(10, 50)
+                links.append({"source": vertical_idx, "target": request_idx, "value": value})
+
+        # Calculate metrics
+        total_flow = sum(link["value"] for link in links)
+        average_flow_per_vertical = round(total_flow / len(verticals), 2) if len(verticals) > 0 else 0
+        total_requests = len(links) - len(verticals)  # Subtract ICMB ORG to vertical links
+
+        metrics = [
+            {"label": "Total Flow", "value": total_flow},
+            {"label": "Avg Flow per Vertical", "value": average_flow_per_vertical},
+            {"label": "Total Requests", "value": total_requests}
+        ]
+
+        return {"nodes": nodes, "links": links, "metrics": metrics}
     except Exception as e:
         logger.error(f"Error generating Sankey data: {e}")
-        return {"nodes": [], "links": []}
+        return {"nodes": [], "links": [], "metrics": []}
 
 # Annotation Endpoints
 @app.route('/api/annotations', methods=['GET'])
@@ -270,7 +283,7 @@ def get_sankey_data():
     if not data["nodes"] or not data["links"]:
         logger.error("No data available for /api/sankey_data")
         return jsonify({"error": "No data available"}), 500
-    response = {"nodes": data["nodes"], "links": data["links"]}
+    response = {"nodes": data["nodes"], "links": data["links"], "metrics": data["metrics"]}
     logger.info(f"/api/sankey_data response: {response}")
     return jsonify(response)
 
