@@ -1,0 +1,267 @@
+const drawSankeyChart = (containerId, data, title, color) => {
+    const container = document.querySelector(containerId);
+    if (!container || !data?.nodes?.length || !data?.links?.length) {
+        d3.select(containerId).append('text')
+            .attr('x', '50%')
+            .attr('y', '50%')
+            .attr('text-anchor', 'middle')
+            .style('fill', getCSSVariable('--fg'))
+            .style('font-size', '12px')
+            .text('No data available');
+        return;
+    }
+
+    const tableBody = document.querySelector('#data-table-content');
+    if (tableBody) {
+        tableBody.innerHTML = data.links.map(link => `
+            <tr>
+                <td>${data.nodes[link.source]?.name || 'N/A'}</td>
+                <td>${data.nodes[link.target]?.name || 'N/A'}</td>
+                <td>${link.value}</td>
+                <td>${link.increase || 'N/A'}</td>
+            </tr>
+        `).join('');
+    }
+
+    if (!document.getElementById('cosmic-pulse-style')) {
+        const style = document.createElement('style');
+        style.id = 'cosmic-pulse-style';
+        style.textContent = `
+            @keyframes pulse {
+                0%, 100% { filter: drop-shadow(0 0 3px rgba(255,255,255,0.1)); }
+                50% { filter: drop-shadow(0 0 6px rgba(255,255,255,0.3)); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const { width, height, fontScale } = getResponsiveDimensions(containerId);
+    const isDarkTheme = getComputedStyle(document.documentElement).getPropertyValue('--theme') === 'dark';
+    const backgroundColor = isDarkTheme ? getCSSVariable('--bg-dark') : getCSSVariable('--bg-light');
+
+    const svg = d3.select(containerId).append('svg')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet')
+        .style('width', '100%')
+        .style('height', '100%')
+        .style('font-family', 'Poppins, sans-serif')
+        .style('background', backgroundColor);
+
+    const margin = { top: 20, right: 20, bottom: 100, left: 20 }; // Increased bottom margin for metrics
+
+    const sankey = d3.sankey()
+        .nodeWidth(65) // Slightly increased for better visibility
+        .nodePadding(30) // Increased for better spacing
+        .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]])
+        .nodeAlign(d3.sankeyLeft);
+
+    const sankeyData = sankey({
+        nodes: data.nodes.map((d, i) => ({ ...d, id: i })),
+        links: data.links.map(d => ({ ...d }))
+    });
+
+    // New polished color palette
+    const colorScale = d3.scaleOrdinal()
+        .domain(data.nodes.map((_, i) => i))
+        .range(['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5']);
+
+    const defs = svg.append('defs');
+    const gradientId = `gradient-${Math.random().toString(36).substr(2, 9)}`;
+    const gradient = defs.append('linearGradient')
+        .attr('id', gradientId)
+        .attr('x1', '0%').attr('y1', '0%')
+        .attr('x2', '100%').attr('y2', '0%');
+    gradient.append('stop').attr('offset', '0%').style('stop-color', getCSSVariable('--chart-gradient-start', '#45B7D1')).style('stop-opacity', 0.9);
+    gradient.append('stop').attr('offset', '100%').style('stop-color', getCSSVariable('--chart-gradient-end', '#96CEB4')).style('stop-opacity', 0.6);
+
+    const tooltip = d3.select('.tooltip');
+
+    const linkGroup = svg.append('g').attr('class', 'links');
+    const links = linkGroup.selectAll('path')
+        .data(sankeyData.links.filter(d => d.value > 0))
+        .enter().append('path')
+        .attr('d', d3.sankeyLinkHorizontal())
+        .attr('stroke', `url(#${gradientId})`)
+        .attr('fill', 'none')
+        .attr('filter', 'url(#glow)')
+        .style('stroke-opacity', 0)
+        .style('stroke-width', 0)
+        .on('mouseover', (event, d) => {
+            const tooltipWidth = tooltip.node()?.offsetWidth || 200;
+            const xPos = Math.min(event.pageX + 12, window.innerWidth - tooltipWidth - 20);
+            tooltip.style('display', 'block')
+                .html(`<b>${d.source.name} → ${d.target.name}</b><br>Count: ${d.value}<br>Increase: ${d.increase || 'N/A'}`)
+                .style('left', `${xPos}px`)
+                .style('top', `${Math.max(event.pageY - 28, 20)}px`)
+                .transition().duration(200).style('opacity', 0.95);
+        })
+        .on('mouseout', () => {
+            tooltip.transition().duration(300).style('opacity', 0)
+                .on('end', () => tooltip.style('display', 'none'));
+        });
+
+    links.transition()
+        .delay((d, i) => i * 50)
+        .duration(1000)
+        .ease(d3.easeCubicInOut)
+        .style('stroke-opacity', d => Math.min(0.8, d.value / 80)) // Adjusted opacity scale
+        .style('stroke-width', d => Math.max(4, Math.min(d.width, 12)));
+
+    const isLowPerformance = window.innerWidth < 1366 || navigator.hardwareConcurrency < 4;
+    const maxParticlesPerLink = isLowPerformance ? 1 : 2;
+
+    links.each(function(d) {
+        const path = d3.select(this).node();
+        const length = path.getTotalLength();
+        const particleCount = Math.min(maxParticlesPerLink, Math.floor(d.value / 40));
+
+        for (let i = 0; i < particleCount; i++) {
+            const particle = svg.append('circle')
+                .attr('r', 2.5) // Slightly larger particles
+                .attr('fill', '#ffffff')
+                .attr('opacity', 0.6)
+                .attr('filter', 'url(#glow)');
+
+            function animate() {
+                particle.transition()
+                    .duration(1800 + Math.random() * 400)
+                    .delay(i * 350)
+                    .ease(d3.easeLinear)
+                    .attrTween('transform', () => {
+                        let lastPoint = { x: 0, y: 0 };
+                        return t => {
+                            const point = path.getPointAtLength(t * length);
+                            if (t === 0) lastPoint = point;
+                            return `translate(${point.x},${point.y})`;
+                        };
+                    })
+                    .attrTween('opacity', () => t => (1 - t) * 0.4 + 0.6)
+                    .on('end', animate);
+            }
+
+            animate();
+        }
+    });
+
+    const node = svg.append('g').attr('class', 'nodes')
+        .selectAll('g')
+        .data(sankeyData.nodes)
+        .enter().append('g')
+        .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+    node.append('rect')
+        .attr('height', d => Math.max(40, d.y1 - d.y0)) // Slightly increased minimum height
+        .attr('width', sankey.nodeWidth())
+        .attr('rx', 10) // Increased corner radius for polish
+        .attr('ry', 10)
+        .attr('fill', (d, i) => colorScale(i)) // Apply color to nodes
+        .attr('filter', 'url(#glow)')
+        .style('opacity', 0)
+        .style('transform', 'scale(0.9) translateY(-5px)')
+        .style('animation', 'pulse 2.5s infinite')
+        .transition()
+        .delay((d, i) => i * 70)
+        .duration(700)
+        .ease(d3.easeBackOut)
+        .style('opacity', 1)
+        .style('transform', 'scale(1) translateY(0)');
+
+    node.each(function(d) {
+        const g = d3.select(this);
+        g.append('text')
+            .attr('x', sankey.nodeWidth() / 2)
+            .attr('y', 18 * fontScale)
+            .attr('dy', '0.35em')
+            .attr('text-anchor', 'middle')
+            .style('fill', '#fff')
+            .style('font-size', `${11 * fontScale}px`) // Slightly increased font size
+            .style('font-weight', '600')
+            .text(d.name.length > 12 ? d.name.substring(0, 12) + '...' : d.name)
+            .style('opacity', 0)
+            .transition().duration(500).delay(200).style('opacity', 1);
+
+        g.append('text')
+            .attr('x', sankey.nodeWidth() / 2)
+            .attr('y', 28 * fontScale)
+            .attr('dy', '0.35em')
+            .attr('text-anchor', 'middle')
+            .style('fill', '#fff')
+            .style('font-size', `${13 * fontScale}px`) // Slightly increased font size
+            .style('font-weight', 'bold')
+            .text(d.value || 'N/A')
+            .style('opacity', 0)
+            .transition().duration(500).delay(300).style('opacity', 1);
+
+        if (d.increase) {
+            g.append('text')
+                .attr('x', sankey.nodeWidth() / 2)
+                .attr('y', 38 * fontScale)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', 'middle')
+                .style('fill', '#fff')
+                .style('font-size', `${11 * fontScale}px`)
+                .style('font-style', 'italic')
+                .text(d.increase)
+                .style('opacity', 0)
+                .transition().duration(500).delay(400).style('opacity', 1);
+        }
+    });
+
+    const metrics = data.metrics || [{ label: 'Current Status', value: 'N/A' }, { label: 'Total Projects', value: 'N/A' }, { label: 'Saving', value: 'N/A' }];
+    const metricGroup = svg.append('g').attr('class', 'metrics')
+        .attr('transform', `translate(0, ${height - margin.bottom + 30})`); // Adjusted for better positioning
+    metrics.forEach((metric, i) => {
+        const xPos = (width / (metrics.length + 1)) * (i + 1);
+        metricGroup.append('rect')
+            .attr('x', xPos - 60) // Increased width
+            .attr('y', 0)
+            .attr('width', 120)
+            .attr('height', 60)
+            .attr('rx', 8)
+            .attr('ry', 8)
+            .attr('fill', '#fff')
+            .attr('opacity', 0.95)
+            .attr('filter', 'url(#glow)');
+        metricGroup.append('text')
+            .attr('x', xPos)
+            .attr('y', 20)
+            .attr('dy', '0.35em')
+            .attr('text-anchor', 'middle')
+            .style('fill', getCSSVariable('--fg'))
+            .style('font-size', `${11 * fontScale}px`)
+            .text(metric.label);
+        metricGroup.append('text')
+            .attr('x', xPos)
+            .attr('y', 40)
+            .attr('dy', '0.35em')
+            .attr('text-anchor', 'middle')
+            .style('fill', getCSSVariable('--fg'))
+            .style('font-size', `${13 * fontScale}px`)
+            .style('font-weight', 'bold')
+            .text(metric.value);
+    });
+
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', margin.top / 2)
+        .attr('text-anchor', 'middle')
+        .style('fill', getCSSVariable('--fg'))
+        .style('font-size', `${15 * fontScale}px`) // Slightly increased title size
+        .style('font-weight', '600')
+        .text(title)
+        .style('opacity', 0)
+        .transition().duration(800).style('opacity', 1);
+
+    svg.on('click', () => {
+        showDetails(
+            sankeyData.links.map(d => ({ label: `${d.source.name} → ${d.target.name}`, value: d.value, increase: d.increase })),
+            'sankey',
+            `Flow from ${title}`
+        );
+    });
+};
+
+i need fix for sankey chart
+node position in center of tile, make better colors and add colors to nodes also
+
+make it better
