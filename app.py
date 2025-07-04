@@ -8,7 +8,7 @@ import logging
 
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///annotations.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///comments.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key'
 db = SQLAlchemy(app)
@@ -18,14 +18,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Database Model
-class Annotation(db.Model):
+class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     chart_id = db.Column(db.String(50), nullable=False)
     page = db.Column(db.String(50), nullable=False)
-    x = db.Column(db.Float, nullable=True)
-    y = db.Column(db.Float, nullable=True)
     text = db.Column(db.Text, nullable=False)
-    user = db.Column(db.String(50), default='Anonymous')
+    user = db.Column(db.String(100), default='Anonymous')
+    reason = db.Column(db.Text)
+    exclusion = db.Column(db.Text)
+    why = db.Column(db.Text)
+    quick_fix = db.Column(db.Text)
+    to_do = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Initialize Database
@@ -65,97 +68,108 @@ def generate_sankey_data():
             "Billing", "Technical", "Consultation", "Escalation", "Training",
             "Refund", "Other"
         ]
-        nodes = [{"name": name} for name in verticals] + [{"name": name} for name in request_types]
+        nodes = [{"name": "ICMB ORG"}] + [{"name": name} for name in verticals] + [{"name": name} for name in request_types]
+        
         links = []
-        other_value = 0
-        threshold = 10
-        for i, vertical in enumerate(verticals):
-            selected_requests = random.sample(request_types, k=random.randint(8, 10))
-            for request_type in selected_requests:
-                value = random.randint(5, 50)
-                if value < threshold and request_type != "Other":
-                    other_value += value
-                else:
-                    links.append({
-                        "source": i,
-                        "target": len(verticals) + request_types.index(request_type),
-                        "value": value if value >= threshold else 0
-                    })
-        if other_value > 0:
+        for i, vertical in enumerate(verticals, start=1):
             links.append({
-                "source": random.randint(0, len(verticals) - 1),
-                "target": len(verticals) + request_types.index("Other"),
-                "value": other_value
+                "source": 0,
+                "target": i,
+                "value": random.randint(50, 150)
             })
+            selected_requests = random.sample(request_types, k=random.randint(6, 10))
+            for request_type in selected_requests:
+                value = random.randint(10, 50)
+                links.append({
+                    "source": i,
+                    "target": len(verticals) + 1 + request_types.index(request_type),
+                    "value": value
+                })
+
         while len(links) < 30:
-            source = random.randint(0, len(verticals) - 1)
-            target = random.randint(len(verticals), len(nodes) - 1)
-            value = random.randint(10, 50)
-            if not any(link["source"] == source and link["target"] == target for link in links):
-                links.append({"source": source, "target": target, "value": value})
-        return {"nodes": nodes, "links": links}
+            vertical_idx = random.randint(1, len(verticals))
+            request_idx = len(verticals) + 1 + random.randint(0, len(request_types) - 1)
+            if not any(link["source"] == vertical_idx and link["target"] == request_idx for link in links):
+                value = random.randint(10, 50)
+                links.append({"source": vertical_idx, "target": request_idx, "value": value})
+
+        total_flow = sum(link["value"] for link in links)
+        average_flow_per_vertical = round(total_flow / len(verticals), 2) if len(verticals) > 0 else 0
+        total_requests = len(links) - len(verticals)
+
+        metrics = [
+            {"label": "Total Flow", "value": total_flow},
+            {"label": "Avg Flow per Vertical", "value": average_flow_per_vertical},
+            {"label": "Total Requests", "value": total_requests}
+        ]
+
+        return {"nodes": nodes, "links": links, "metrics": metrics}
     except Exception as e:
         logger.error(f"Error generating Sankey data: {e}")
-        return {"nodes": [], "links": []}
+        return {"nodes": [], "links": [], "metrics": []}
 
-# Annotation Endpoints
-@app.route('/api/annotations', methods=['GET'])
-def get_annotations():
+# Comment Endpoints
+@app.route('/api/annotations', methods=['GET', 'POST'])
+def handle_comments():
     try:
+        if request.method == 'POST':
+            data = request.json
+            if not all(key in data for key in ['chart_id', 'page', 'text']):
+                return jsonify({"error": "Missing required fields: chart_id, page, text"}), 400
+            if len(data['text'].strip()) == 0:
+                return jsonify({"error": "Comment text cannot be empty"}), 400
+            if len(data['text']) > 500:
+                return jsonify({"error": "Comment text is too long (max 500 characters)"}), 400
+            comment = Comment(
+                chart_id=data['chart_id'],
+                page=data['page'],
+                text=data['text'].strip(),
+                user=data.get('user', 'Anonymous')[:100],
+                reason=data.get('reason'),
+                exclusion=data.get('exclusion'),
+                why=data.get('why'),
+                quick_fix=data.get('quick_fix'),
+                to_do=data.get('to_do')
+            )
+            db.session.add(comment)
+            db.session.commit()
+            socketio.emit('new_comment', {
+                'id': comment.id,
+                'chart_id': comment.chart_id,
+                'page': comment.page,
+                'text': comment.text,
+                'user': comment.user,
+                'reason': comment.reason,
+                'exclusion': comment.exclusion,
+                'why': comment.why,
+                'quick_fix': comment.quick_fix,
+                'to_do': comment.to_do,
+                'created_at': comment.created_at.isoformat()
+            }, namespace='/annotations')
+            return jsonify({"message": "Comment added successfully", "id": comment.id}), 201
+
         page = request.args.get('page', '/')
         chart_id = request.args.get('chart_id')
         if not chart_id:
             return jsonify({"error": "chart_id is required"}), 400
-        annotations = Annotation.query.filter_by(page=page, chart_id=chart_id).all()
+        comments = Comment.query.filter_by(page=page, chart_id=chart_id).all()
         return jsonify([{
-            'id': a.id,
-            'chart_id': a.chart_id,
-            'page': a.page,
-            'x': a.x,
-            'y': a.y,
-            'text': a.text,
-            'user': a.user,
-            'created_at': a.created_at.isoformat()
-        } for a in annotations])
+            'id': c.id,
+            'chart_id': c.chart_id,
+            'page': c.page,
+            'text': c.text,
+            'user': c.user,
+            'reason': c.reason,
+            'exclusion': c.exclusion,
+            'why': c.why,
+            'quick_fix': c.quick_fix,
+            'to_do': c.to_do,
+            'created_at': c.created_at.isoformat()
+        } for c in comments])
     except Exception as e:
-        logger.error(f"Error fetching annotations: {e}")
-        return jsonify({"error": "Failed to fetch annotations"}), 500
-
-@app.route('/api/annotations', methods=['POST'])
-def add_annotation():
-    try:
-        data = request.json
-        if not all(key in data for key in ['chart_id', 'page', 'text']):
-            return jsonify({"error": "Missing required fields: chart_id, page, text"}), 400
-        if len(data['text'].strip()) == 0:
-            return jsonify({"error": "Annotation text cannot be empty"}), 400
-        if len(data['text']) > 500:
-            return jsonify({"error": "Annotation text is too long (max 500 characters)"}), 400
-        annotation = Annotation(
-            chart_id=data['chart_id'],
-            page=data['page'],
-            x=data.get('x'),
-            y=data.get('y'),
-            text=data['text'].strip(),
-            user=data.get('user', 'Anonymous')[:50]
-        )
-        db.session.add(annotation)
-        db.session.commit()
-        socketio.emit('new_annotation', {
-            'id': annotation.id,
-            'chart_id': annotation.chart_id,
-            'page': annotation.page,
-            'x': annotation.x,
-            'y': annotation.y,
-            'text': annotation.text,
-            'user': annotation.user,
-            'created_at': annotation.created_at.isoformat()
-        }, namespace='/annotations')
-        return jsonify({"message": "Annotation added successfully", "id": annotation.id})
-    except Exception as e:
-        logger.error(f"Error adding annotation: {e}")
+        logger.error(f"Error handling comments: {e}")
         db.session.rollback()
-        return jsonify({"error": "Failed to add annotation"}), 500
+        return jsonify({"error": "Failed to handle comments"}), 500
 
 # SocketIO Handlers
 @socketio.on('connect', namespace='/annotations')
@@ -270,7 +284,7 @@ def get_sankey_data():
     if not data["nodes"] or not data["links"]:
         logger.error("No data available for /api/sankey_data")
         return jsonify({"error": "No data available"}), 500
-    response = {"nodes": data["nodes"], "links": data["links"]}
+    response = {"nodes": data["nodes"], "links": data["links"], "metrics": data["metrics"]}
     logger.info(f"/api/sankey_data response: {response}")
     return jsonify(response)
 
