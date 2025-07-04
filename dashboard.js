@@ -298,42 +298,6 @@ const exportToExcel = () => {
     }
 };
 
-const showDetails = (data, type, summary) => {
-    if (!data?.length) {
-        alert('No data available to display.');
-        return;
-    }
-    const container = document.getElementById('details');
-    if (!container) {
-        console.error('Details container not found');
-        return;
-    }
-    if (container.classList.contains('open')) {
-        container.classList.remove('open');
-        return;
-    }
-    const overview = document.getElementById('overview-text');
-    const tableBody = document.querySelector('#data-table-content tbody');
-    if (overview) overview.textContent = summary;
-    if (tableBody) {
-        tableBody.innerHTML = data.map(d => `
-            <tr>
-                <td>${d.label || 'N/A'}</td>
-                <td>${type === 'scatter' ?
-                `TF: ${d.total_tf?.toFixed(2) || 'N/A'}, OCM: ${d.ocm_overall?.toFixed(2) || 'N/A'}` :
-                type === 'grouped-bar' ?
-                    `Baseline: ${d.baseline?.toFixed(2) || 'N/A'}, Growth: ${d.growth?.toFixed(2) || 'N/A'}` :
-                    `${(d.value ?? 'N/A').toFixed(2)}`}</td>
-            </tr>
-        `).join('');
-    }
-    const alt = d3.select('#alt-chart-content');
-    alt.selectAll('*').remove();
-    const { width, height } = getResponsiveDimensions('#alt-chart-content');
-    const svg = alt.append('svg').attr('viewBox', `0 0 ${width} ${Math.min(height, 180)}`);
-    switchTab('data-table');
-    container.classList.add('open');
-};
 
 const createChartBase = (svg, width, height, x, y, fontScale) => {
     const { margin } = chartConfig;
@@ -1483,7 +1447,6 @@ const drawScatterChart = (container, data, title, colorTF, colorOCM) => {
 //         );
 //     });
 // };
-
 const drawSankeyChart = (containerId, data, title, color) => {
     const container = document.querySelector(containerId);
     if (!container || !data?.nodes?.length || !data?.links?.length) {
@@ -1492,7 +1455,7 @@ const drawSankeyChart = (containerId, data, title, color) => {
             .attr('y', '50%')
             .attr('text-anchor', 'middle')
             .style('fill', getCSSVariable('--fg'))
-            .style('font-size', '12px') // Reduced error message font size
+            .style('font-size', '12px')
             .text('No data available');
         return;
     }
@@ -1514,15 +1477,15 @@ const drawSankeyChart = (containerId, data, title, color) => {
         style.id = 'cosmic-pulse-style';
         style.textContent = `
             @keyframes pulse {
-                0%, 100% { filter: drop-shadow(0 0 4px rgba(255,255,255,0.15)); }
-                50% { filter: drop-shadow(0 0 10px rgba(255,255,255,0.45)); }
+                0%, 100% { filter: drop-shadow(0 0 3px rgba(255,255,255,0.1)); }
+                50% { filter: drop-shadow(0 0 6px rgba(255,255,255,0.3)); }
             }
         `;
         document.head.appendChild(style);
     }
 
     const { width, height, fontScale } = getResponsiveDimensions(containerId);
-    const isDarkTheme = getComputedStyle(document.documentElement).getPropertyValue('--theme') === 'dark'; // Check theme state
+    const isDarkTheme = getComputedStyle(document.documentElement).getPropertyValue('--theme') === 'dark';
     const backgroundColor = isDarkTheme ? getCSSVariable('--bg-dark') : getCSSVariable('--bg-light');
 
     const svg = d3.select(containerId).append('svg')
@@ -1533,23 +1496,23 @@ const drawSankeyChart = (containerId, data, title, color) => {
         .style('font-family', 'Poppins, sans-serif')
         .style('background', backgroundColor);
 
-    const margin = { top: 20, right: 20, bottom: 80, left: 20 };
+    const margin = { top: 20, right: 20, bottom: 100, left: 20 }; // Increased bottom margin for metrics
 
     const sankey = d3.sankey()
-        .nodeWidth(80) // Consistent width for all tiles
-        .nodePadding(15) // Reduced to 15 for tighter, uniform spacing
+        .nodeWidth(65) // Slightly increased for better visibility
+        .nodePadding(30) // Increased for better spacing
         .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]])
-        .nodeAlign(d3.sankeyCenter);
+        .nodeAlign(d3.sankeyLeft);
 
     const sankeyData = sankey({
         nodes: data.nodes.map((d, i) => ({ ...d, id: i })),
         links: data.links.map(d => ({ ...d }))
     });
 
-    // Refined blue shades for better gradient and theme compatibility
+    // New polished color palette
     const colorScale = d3.scaleOrdinal()
         .domain(data.nodes.map((_, i) => i))
-        .range(['#1E3A8A', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE', '#E0E7FF']); // Finer blue gradient
+        .range(['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5']);
 
     const defs = svg.append('defs');
     const gradientId = `gradient-${Math.random().toString(36).substr(2, 9)}`;
@@ -1557,8 +1520,8 @@ const drawSankeyChart = (containerId, data, title, color) => {
         .attr('id', gradientId)
         .attr('x1', '0%').attr('y1', '0%')
         .attr('x2', '100%').attr('y2', '0%');
-    gradient.append('stop').attr('offset', '0%').style('stop-color', getCSSVariable('--chart-gradient-start')).style('stop-opacity', 0.8);
-    gradient.append('stop').attr('offset', '100%').style('stop-color', getCSSVariable('--chart-gradient-end')).style('stop-opacity', 0.5);
+    gradient.append('stop').attr('offset', '0%').style('stop-color', getCSSVariable('--chart-gradient-start', '#45B7D1')).style('stop-opacity', 0.9);
+    gradient.append('stop').attr('offset', '100%').style('stop-color', getCSSVariable('--chart-gradient-end', '#96CEB4')).style('stop-opacity', 0.6);
 
     const tooltip = d3.select('.tooltip');
 
@@ -1590,34 +1553,38 @@ const drawSankeyChart = (containerId, data, title, color) => {
         .delay((d, i) => i * 50)
         .duration(1000)
         .ease(d3.easeCubicInOut)
-        .style('stroke-opacity', d => Math.min(0.7, d.value / 100))
-        .style('stroke-width', d => Math.max(3, Math.min(d.width, 10)));
+        .style('stroke-opacity', d => Math.min(0.8, d.value / 80)) // Adjusted opacity scale
+        .style('stroke-width', d => Math.max(4, Math.min(d.width, 12)));
 
     const isLowPerformance = window.innerWidth < 1366 || navigator.hardwareConcurrency < 4;
     const maxParticlesPerLink = isLowPerformance ? 1 : 2;
 
-    links.each(function(d) {
+    links.each(function (d) {
         const path = d3.select(this).node();
         const length = path.getTotalLength();
-        const particleCount = Math.min(maxParticlesPerLink, Math.floor(d.value / 50));
+        const particleCount = Math.min(maxParticlesPerLink, Math.floor(d.value / 40));
 
         for (let i = 0; i < particleCount; i++) {
             const particle = svg.append('circle')
-                .attr('r', 2)
+                .attr('r', 2.5) // Slightly larger particles
                 .attr('fill', '#ffffff')
-                .attr('opacity', 0.5)
+                .attr('opacity', 0.6)
                 .attr('filter', 'url(#glow)');
 
             function animate() {
                 particle.transition()
-                    .duration(2000 + Math.random() * 500)
-                    .delay(i * 400)
+                    .duration(1800 + Math.random() * 400)
+                    .delay(i * 350)
                     .ease(d3.easeLinear)
-                    .attrTween('transform', () => t => {
-                        const point = path.getPointAtLength(t * length);
-                        return `translate(${point.x},${point.y})`;
+                    .attrTween('transform', () => {
+                        let lastPoint = { x: 0, y: 0 };
+                        return t => {
+                            const point = path.getPointAtLength(t * length);
+                            if (t === 0) lastPoint = point;
+                            return `translate(${point.x},${point.y})`;
+                        };
                     })
-                    .attrTween('opacity', () => t => (1 - t))
+                    .attrTween('opacity', () => t => (1 - t) * 0.4 + 0.6)
                     .on('end', animate);
             }
 
@@ -1632,43 +1599,43 @@ const drawSankeyChart = (containerId, data, title, color) => {
         .attr('transform', d => `translate(${d.x0},${d.y0})`);
 
     node.append('rect')
-        .attr('height', d => Math.max(35, d.y1 - d.y0)) // Increased to 35 for better text fit and uniformity
-        .attr('width', sankey.nodeWidth()) // Consistent width
-        .attr('rx', 8) // Uniform corner radius
-        .attr('ry', 8) // Uniform corner radius
-        .attr('fill', (d, i) => colorScale(i))
+        .attr('height', d => Math.max(40, d.y1 - d.y0)) // Slightly increased minimum height
+        .attr('width', sankey.nodeWidth())
+        .attr('rx', 10) // Increased corner radius for polish
+        .attr('ry', 10)
+        .attr('fill', (d, i) => colorScale(i)) // Apply color to nodes
         .attr('filter', 'url(#glow)')
         .style('opacity', 0)
         .style('transform', 'scale(0.9) translateY(-5px)')
-        .style('animation', 'pulse 3s infinite')
+        .style('animation', 'pulse 2.5s infinite')
         .transition()
-        .delay((d, i) => i * 80)
-        .duration(800)
+        .delay((d, i) => i * 70)
+        .duration(700)
         .ease(d3.easeBackOut)
         .style('opacity', 1)
         .style('transform', 'scale(1) translateY(0)');
 
-    node.each(function(d) {
+    node.each(function (d) {
         const g = d3.select(this);
         g.append('text')
             .attr('x', sankey.nodeWidth() / 2)
-            .attr('y', 15 * fontScale)
+            .attr('y', 18 * fontScale)
             .attr('dy', '0.35em')
             .attr('text-anchor', 'middle')
             .style('fill', '#fff')
-            .style('font-size', `${10 * fontScale}px`)
+            .style('font-size', `${11 * fontScale}px`) // Slightly increased font size
             .style('font-weight', '600')
-            .text(d.name)
+            .text(d.name.length > 12 ? d.name.substring(0, 12) + '...' : d.name)
             .style('opacity', 0)
             .transition().duration(500).delay(200).style('opacity', 1);
 
         g.append('text')
             .attr('x', sankey.nodeWidth() / 2)
-            .attr('y', 25 * fontScale)
+            .attr('y', 28 * fontScale)
             .attr('dy', '0.35em')
             .attr('text-anchor', 'middle')
             .style('fill', '#fff')
-            .style('font-size', `${12 * fontScale}px`)
+            .style('font-size', `${13 * fontScale}px`) // Slightly increased font size
             .style('font-weight', 'bold')
             .text(d.value || 'N/A')
             .style('opacity', 0)
@@ -1677,11 +1644,11 @@ const drawSankeyChart = (containerId, data, title, color) => {
         if (d.increase) {
             g.append('text')
                 .attr('x', sankey.nodeWidth() / 2)
-                .attr('y', 35 * fontScale)
+                .attr('y', 38 * fontScale)
                 .attr('dy', '0.35em')
                 .attr('text-anchor', 'middle')
                 .style('fill', '#fff')
-                .style('font-size', `${10 * fontScale}px`)
+                .style('font-size', `${11 * fontScale}px`)
                 .style('font-style', 'italic')
                 .text(d.increase)
                 .style('opacity', 0)
@@ -1689,36 +1656,36 @@ const drawSankeyChart = (containerId, data, title, color) => {
         }
     });
 
-    const metrics = data.metrics || [];
+    const metrics = data.metrics || [{ label: 'Current Status', value: 'N/A' }, { label: 'Total Projects', value: 'N/A' }, { label: 'Saving', value: 'N/A' }];
     const metricGroup = svg.append('g').attr('class', 'metrics')
-        .attr('transform', `translate(0, ${height - margin.bottom + 20})`);
+        .attr('transform', `translate(0, ${height - margin.bottom + 30})`); // Adjusted for better positioning
     metrics.forEach((metric, i) => {
         const xPos = (width / (metrics.length + 1)) * (i + 1);
         metricGroup.append('rect')
-            .attr('x', xPos - 50)
+            .attr('x', xPos - 60) // Increased width
             .attr('y', 0)
-            .attr('width', 100)
-            .attr('height', 50)
-            .attr('rx', 6)
-            .attr('ry', 6)
+            .attr('width', 120)
+            .attr('height', 60)
+            .attr('rx', 8)
+            .attr('ry', 8)
             .attr('fill', '#fff')
-            .attr('opacity', 0.9)
+            .attr('opacity', 0.95)
             .attr('filter', 'url(#glow)');
         metricGroup.append('text')
             .attr('x', xPos)
-            .attr('y', 15)
+            .attr('y', 20)
             .attr('dy', '0.35em')
             .attr('text-anchor', 'middle')
             .style('fill', getCSSVariable('--fg'))
-            .style('font-size', `${10 * fontScale}px`)
+            .style('font-size', `${11 * fontScale}px`)
             .text(metric.label);
         metricGroup.append('text')
             .attr('x', xPos)
-            .attr('y', 30)
+            .attr('y', 40)
             .attr('dy', '0.35em')
             .attr('text-anchor', 'middle')
             .style('fill', getCSSVariable('--fg'))
-            .style('font-size', `${12 * fontScale}px`)
+            .style('font-size', `${13 * fontScale}px`)
             .style('font-weight', 'bold')
             .text(metric.value);
     });
@@ -1728,7 +1695,7 @@ const drawSankeyChart = (containerId, data, title, color) => {
         .attr('y', margin.top / 2)
         .attr('text-anchor', 'middle')
         .style('fill', getCSSVariable('--fg'))
-        .style('font-size', `${14 * fontScale}px`)
+        .style('font-size', `${15 * fontScale}px`) // Slightly increased title size
         .style('font-weight', '600')
         .text(title)
         .style('opacity', 0)
@@ -1742,6 +1709,238 @@ const drawSankeyChart = (containerId, data, title, color) => {
         );
     });
 };
+
+const showCommentForm = (chartId = 'all-charts') => {
+    const formContainer = document.querySelector('.comment-form-container');
+    if (!formContainer) return;
+    formContainer.classList.add('open');
+    const chartInput = formContainer.querySelector('#chart-select');
+    const hiddenChartInput = formContainer.querySelector('#comment-chart-id');
+    if (chartInput && hiddenChartInput) {
+        chartInput.value = chartId;
+        hiddenChartInput.value = chartId;
+    }
+};
+
+const closeCommentForm = () => {
+    const formContainer = document.querySelector('.comment-form-container');
+    if (formContainer) formContainer.classList.remove('open');
+    const form = formContainer.querySelector('.comment-form');
+    if (form) form.reset();
+};
+
+const submitComment = async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const chartId = formData.get('chart_id');
+    const commentData = {
+        chart_id: chartId,
+        page: window.location.pathname,
+        text: formData.get('comments'),
+        user: formData.get('username') || 'Anonymous',
+        reason: formData.get('reason'),
+        exclusion: formData.get('exclusion'),
+        why: formData.get('why'),
+        quick_fix: formData.get('quick_fix'),
+        to_do: formData.get('to_do')
+    };
+
+    try {
+        const response = await fetch('/api/annotations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(commentData)
+        });
+        if (!response.ok) throw new Error(`Failed to submit comment: ${response.status}`);
+        const result = await response.json();
+        alert('Comment added successfully!');
+        closeCommentForm();
+        fetchComments(chartId === 'all-charts' ? 'all-charts' : chartId);
+        const details = document.getElementById('details');
+        if (details && !details.classList.contains('open')) {
+            details.classList.add('open');
+            switchTab('comments');
+        }
+    } catch (error) {
+        console.error('Error submitting comment:', error);
+        alert('Failed to submit comment: ' + error.message);
+    }
+};
+
+const showDetails = (data, type, summary) => {
+    if (!data?.length) {
+        alert('No data available to display.');
+        return;
+    }
+
+    const chartId = type === 'line' ? 'line-chart' :
+        type === 'bar' ? 'bar-chart' :
+        type === 'lollipop' ? 'area-chart' :
+        type === 'scatter' ? 'scatter-chart' :
+        type === 'sankey' ? 'sankey-chart' : 'all-charts';
+
+    const container = document.getElementById('details');
+    if (container) {
+        container.classList.add('open');
+        const overview = document.getElementById('overview-text');
+        if (overview) overview.textContent = summary;
+        const tableBody = document.querySelector('#data-table-content tbody');
+        if (tableBody) {
+            tableBody.innerHTML = data.map(d => `
+                <tr>
+                    <td>${d.label || 'N/A'}</td>
+                    <td>${type === 'scatter' ?
+                        `TF: ${d.total_tf?.toFixed(2) || 'N/A'}, OCM: ${d.ocm_overall?.toFixed(2) || 'N/A'}` :
+                        type === 'grouped-bar' ?
+                            `Baseline: ${d.baseline?.toFixed(2) || 'N/A'}, Growth: ${d.growth?.toFixed(2) || 'N/A'}` :
+                            `${(d.value ?? 'N/A').toFixed(2)}`}</td>
+                </tr>
+            `).join('');
+        }
+        switchTab('comments');
+        setTimeout(() => {
+            fetchComments(chartId);
+        }, 100);
+    }
+};
+
+const fetchComments = async (chartId, container = document.querySelector('#comments-content')) => {
+    try {
+        const response = await fetch(`/api/annotations?page=${window.location.pathname}&chart_id=${chartId}`, {
+            cache: 'no-store'
+        });
+        if (!response.ok) throw new Error(`Failed to fetch comments: ${response.status}`);
+        let comments = await response.json();
+        if (container) {
+            if (chartId === 'all-charts') {
+                const allChartIds = ['line-chart', 'bar-chart', 'area-chart', 'scatter-chart', 'sankey-chart'];
+                const allComments = [];
+                for (const id of allChartIds) {
+                    const resp = await fetch(`/api/annotations?page=${window.location.pathname}&chart_id=${id}`, {
+                        cache: 'no-store'
+                    });
+                    if (resp.ok) {
+                        const chartComments = await resp.json();
+                        allComments.push(...chartComments);
+                    }
+                }
+                const allChartsResp = await fetch(`/api/annotations?page=${window.location.pathname}&chart_id=all-charts`, {
+                    cache: 'no-store'
+                });
+                if (allChartsResp.ok) {
+                    const allChartsComments = await allChartsResp.json();
+                    allComments.push(...allChartsComments);
+                }
+                comments = allComments;
+            } else {
+                const allChartsResp = await fetch(`/api/annotations?page=${window.location.pathname}&chart_id=all-charts`, {
+                    cache: 'no-store'
+                });
+                if (allChartsResp.ok) {
+                    const allChartsComments = await allChartsResp.json();
+                    comments = [...comments, ...allChartsComments];
+                }
+            }
+            if (comments.length > 0) {
+                comments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const table = `
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: ${getCSSVariable('--card-border')};">
+                                <th style="padding: 8px; text-align: left;">User</th>
+                                <th style="padding: 8px; text-align: left;">Chart</th>
+                                <th style="padding: 8px; text-align: left;">Comment</th>
+                                <th style="padding: 8px; text-align: left;">Reason</th>
+                                <th style="padding: 8px; text-align: left;">Exclusion</th>
+                                <th style="padding: 8px; text-align: left;">Why</th>
+                                <th style="padding: 8px; text-align: left;">Quick Fix</th>
+                                <th style="padding: 8px; text-align: left;">To Do</th>
+                                <th style="padding: 8px; text-align: left;">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${comments.map(comment => `
+                                <tr style="border-bottom: 1px solid ${getCSSVariable('--card-border')};">
+                                    <td style="padding: 8px;">${comment.user || 'Anonymous'}</td>
+                                    <td style="padding: 8px;">${comment.chart_id.replace('-chart', '').toUpperCase()}</td>
+                                    <td style="padding: 8px;">${comment.text}</td>
+                                    <td style="padding: 8px;">${comment.reason || ''}</td>
+                                    <td style="padding: 8px;">${comment.exclusion || ''}</td>
+                                    <td style="padding: 8px;">${comment.why || ''}</td>
+                                    <td style="padding: 8px;">${comment.quick_fix || ''}</td>
+                                    <td style="padding: 8px;">${comment.to_do || ''}</td>
+                                    <td style="padding: 8px;">${new Date(comment.created_at).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                container.innerHTML = table;
+                return new Promise(resolve => requestAnimationFrame(() => resolve(true)));
+            } else {
+                container.innerHTML = `<p style="color: ${getCSSVariable('--fg')};">No comments available for ${chartId.replace('-chart', '').toUpperCase()}.</p>`;
+                return true;
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching comments:', error);
+        if (container) {
+            container.innerHTML = `<p style="color: ${getCSSVariable('--fg')};">Error loading comments for ${chartId.replace('-chart', '').toUpperCase()}: ${error.message}</p>`;
+        }
+        return false;
+    }
+};
+
+// Update "Add Comments" button handler to wait for comments table to render
+document.addEventListener('DOMContentLoaded', () => {
+    const addCommentsButton = document.querySelector('.header-actions button:nth-child(3)'); // Targets the "Add Comments" button
+    if (addCommentsButton) {
+        addCommentsButton.addEventListener('click', async () => {
+            const chartId = 'all-charts';
+            const container = document.querySelector('#comments-content');
+            try {
+                const details = document.getElementById('details');
+                if (details) {
+                    details.classList.add('open');
+                    switchTab('comments');
+                }
+                const commentsLoaded = await fetchComments(chartId, container);
+                if (commentsLoaded) {
+                    // Poll DOM to ensure table is rendered with proper scoping
+                    await new Promise(resolve => {
+                        const checkTable = () => {
+                            const table = container.querySelector('table');
+                            if (table) resolve();
+                            else requestAnimationFrame(checkTable);
+                        };
+                        checkTable();
+                    });
+                    showCommentForm(chartId);
+                } else {
+                    alert('Comments failed to load. Please try again later.');
+                }
+            } catch (error) {
+                console.error('Error loading comments before showing form:', error);
+                alert('Failed to load comments. Please try again later. Error: ' + error.message);
+            }
+        });
+    }
+
+    createTooltip();
+    initializeCharts();
+});
+
+// SocketIO for real-time comment updates
+const socket = io('/annotations');
+socket.on('connect', () => {
+    console.log('Connected to SocketIO');
+});
+socket.on('new_comment', (comment) => {
+    if (comment.page === window.location.pathname) {
+        fetchComments(comment.chart_id);
+    }
+});
 
 // Event Handling
 const debounce = (func, wait) => {
